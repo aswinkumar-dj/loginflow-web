@@ -19,6 +19,7 @@ Users can:
 - Zustand (Global user state)  
 - Tailwind CSS  
 - React Icons
+- React Bits (Background Component)
 
 ---
 
