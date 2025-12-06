@@ -24,8 +24,8 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    clearName();
     router.replace("/");
+    clearName();
   };
 
   if (loading)
