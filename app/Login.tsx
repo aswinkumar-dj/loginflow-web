@@ -35,10 +35,8 @@ export default function AuthForm() {
 
     if (!emailValue) return setEmailError("Email is required");
     if (!passwordValue) return setPasswordError("Password is required");
-
-    if (isSignup && passwordValue !== confirmValue) {
-      return setPasswordError("Password mismatch");
-    }
+    if (isSignup && passwordValue !== confirmValue)
+      return setPasswordError("Passwords do not match");
 
     try {
       setLoading(true);
@@ -77,7 +75,6 @@ export default function AuthForm() {
     try {
       setLoading(true);
       const user = await googleLogin();
-
       setNameStore(user.displayName || "User");
 
       await sendSignupWebhook({
@@ -96,13 +93,13 @@ export default function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="min-w-115 max-w-md bg-black/50 backdrop-blur-md rounded-xl shadow-lg py-6 px-12">
-        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-          <h1 className="text-2xl font-extrabold text-white text-center">
-            {isSignup ? "Create Account" : "Login"}
-          </h1>
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-sm sm:max-w-md bg-black/50 backdrop-blur-md rounded-xl shadow-lg py-8 px-6 sm:px-10">
+        <h1 className="text-xl sm:text-3xl font-extrabold text-white text-center mb-6">
+          {isSignup ? "Create Account" : "Login to Explore"}
+        </h1>
 
+        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
           {isSignup && <input ref={name} type="text" placeholder="Full Name" />}
 
           <input ref={email} type="email" placeholder="Email" />
@@ -116,7 +113,7 @@ export default function AuthForm() {
             />
             <span
               onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-3 text-white/20 cursor-pointer"
+              className="absolute right-3 top-3 text-white/25 cursor-pointer"
             >
               {showPwd ? (
                 <AiOutlineEye size={18} />
@@ -137,7 +134,7 @@ export default function AuthForm() {
               />
               <span
                 onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                className="absolute right-3 top-3 text-white/20 cursor-pointer"
+                className="absolute right-3 top-3 text-white/25 cursor-pointer"
               >
                 {showConfirmPwd ? (
                   <AiOutlineEye size={18} />
@@ -150,9 +147,10 @@ export default function AuthForm() {
 
           <button
             disabled={loading}
-            className={`w-full py-3 bg-white text-black font-medium rounded-md ${
-              loading ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"
-            }`}
+            className={`w-full py-3 bg-white text-black font-medium rounded-md transition
+              ${
+                loading ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"
+              }`}
             onClick={handleSubmit}
           >
             {loading ? "Processing..." : isSignup ? "Sign Up" : "Login"}
@@ -173,11 +171,14 @@ export default function AuthForm() {
 
         <button
           disabled={loading}
-          className="w-full py-3 text-white border border-white/20 rounded-md flex items-center justify-center gap-2"
+          className={`w-full py-3 text-white border border-white/20
+             rounded-md flex items-center justify-center gap-2 transition
+             ${
+               loading ? "opacity-40 cursor-not-allowed" : "hover:bg-black/50"
+             }`}
           onClick={handleGoogleAuth}
         >
-          <FcGoogle size={20} />
-          Continue with Google
+          <FcGoogle size={20} /> Continue with Google
         </button>
       </div>
     </div>
