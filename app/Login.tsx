@@ -11,7 +11,7 @@ export default function AuthForm() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="min-w-115 max-w-md bg-black/50 backdrop-blur-md rounded-xl shadow-lg py-6 px-12">
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
           {/* Heading */}
           <h1 className="text-2xl font-extrabold text-white text-center">
             {isSignup ? "Create Account" : "Login"}
