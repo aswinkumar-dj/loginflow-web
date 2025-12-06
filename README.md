@@ -15,7 +15,7 @@ Users can:
 ## 🚀 Tech Stack
  
 - Next.js (App Router)  
-- React  
+- Firebase 
 - Zustand (Global user state)  
 - Tailwind CSS  
 - React Icons
