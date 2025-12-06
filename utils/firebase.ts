@@ -6,10 +6,10 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// For Firebase Jloginflow-aafe3.firebaseapp.comS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCtpRQsiy52FIgUHOzxTa7rCXSLqt3QvH0",
-  authDomain: "loginflow-aafe3.firebaseapp.com",
+  authDomain: "http://localhost:3000/",
   projectId: "loginflow-aafe3",
   storageBucket: "loginflow-aafe3.firebasestorage.app",
   messagingSenderId: "498869793906",

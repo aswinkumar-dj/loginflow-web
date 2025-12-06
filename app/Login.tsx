@@ -10,29 +10,57 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "@/utils/firebase";
 import { useRouter } from "next/navigation";
+import { useUserStore } from "@/store/useStore";
 
 export default function AuthForm() {
   const [isSignup, setIsSignup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const name = useRef<HTMLInputElement>(null);
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
+  const confirmPassword = useRef<HTMLInputElement>(null);
+
+  const setNameStore = useUserStore((s) => s.setName);
 
   const router = useRouter();
 
-  // ⬇️ Auth Logic
+  const formatFirebaseError = (error: string) => {
+    if (error.includes("auth/invalid-email")) return "Invalid email format";
+    if (error.includes("auth/missing-email")) return "Email is required";
+    if (error.includes("auth/weak-password"))
+      return "Password must be at least 6 characters";
+    if (error.includes("auth/email-already-in-use"))
+      return "Email already registered";
+    if (error.includes("auth/invalid-credential"))
+      return "Incorrect email or password";
+
+    return "Authentication failed";
+  };
+
   const handleButtonClick = async () => {
+    setEmailError("");
+    setPasswordError("");
+
     const emailValue = email.current?.value;
     const passwordValue = password.current?.value;
+    const confirmValue = confirmPassword.current?.value;
 
-    if (!emailValue || !passwordValue) {
-      alert("Email and password are required");
-      return;
+    if (!emailValue) return setEmailError("Email is required");
+    if (!passwordValue) return setPasswordError("Password is required");
+
+    if (isSignup && passwordValue !== confirmValue) {
+      return setPasswordError("Passwords do not match");
     }
 
     try {
+      setLoading(true);
+
       if (isSignup) {
         const userCredential = await createUserWithEmailAndPassword(
           auth,
@@ -40,34 +68,50 @@ export default function AuthForm() {
           passwordValue
         );
 
-        // store name in Firebase profile
         if (name.current?.value) {
           await updateProfile(userCredential.user, {
             displayName: name.current.value,
           });
+          setNameStore(name.current.value);
         }
-
-        alert("Signup successful");
       } else {
-        await signInWithEmailAndPassword(auth, emailValue, passwordValue);
-        alert("Login successful");
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          emailValue,
+          passwordValue
+        );
+        setNameStore(userCredential.user.displayName || "User");
       }
 
-      router.push("/dashboard"); // redirect page
+      router.push("/dashboard");
     } catch (error: any) {
-      console.error(error.message);
-      alert(error.message);
+      const readable = formatFirebaseError(error.message);
+
+      if (
+        error.message.includes("email") ||
+        error.message.includes("credential")
+      ) {
+        setEmailError(readable);
+      }
+
+      if (
+        error.message.includes("password") ||
+        error.message.includes("weak")
+      ) {
+        setPasswordError(readable);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ⬇️ Google login
   const handleGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const res = await signInWithPopup(auth, googleProvider);
+      setNameStore(res.user.displayName || "User");
       router.push("/dashboard");
-    } catch (error: any) {
-      console.error(error.message);
-      alert(error.message);
+    } catch {
+      alert("Google login failed");
     }
   };
 
@@ -84,7 +128,7 @@ export default function AuthForm() {
               ref={name}
               type="text"
               placeholder="Full Name"
-              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 focus:outline-none transition"
+              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
             />
           )}
 
@@ -92,15 +136,18 @@ export default function AuthForm() {
             ref={email}
             type="email"
             placeholder="Email"
-            className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 focus:outline-none transition"
+            className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
           />
+          {emailError && (
+            <p className="text-red-400 text-xs animate-fade">{emailError}</p>
+          )}
 
           <div className="relative">
             <input
               ref={password}
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 focus:outline-none transition"
+              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
             />
 
             <span
@@ -115,12 +162,17 @@ export default function AuthForm() {
             </span>
           </div>
 
+          {passwordError && (
+            <p className="text-red-400 text-xs animate-fade">{passwordError}</p>
+          )}
+
           {isSignup && (
             <div className="relative">
               <input
+                ref={confirmPassword}
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
-                className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 focus:outline-none transition"
+                className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
               />
 
               <span
@@ -138,10 +190,13 @@ export default function AuthForm() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-white text-black font-medium rounded-md hover:bg-gray-300 transition"
+            disabled={loading}
+            className={`w-full py-3 bg-white text-black font-medium rounded-md transition ${
+              loading ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"
+            }`}
             onClick={handleButtonClick}
           >
-            {isSignup ? "Sign Up" : "Login"}
+            {loading ? "Processing..." : isSignup ? "Sign Up" : "Login"}
           </button>
 
           <p className="text-center text-sm text-gray-300">
@@ -158,7 +213,7 @@ export default function AuthForm() {
         <div className="border-b border-white/10 my-10 mx-6" />
 
         <button
-          className="w-full py-3 text-white border border-white/20 font-medium rounded-md hover:bg-black/50 transition flex items-center justify-center mb-2 gap-2"
+          className="w-full py-3 text-white border border-white/20 font-medium rounded-md hover:bg-black/50 transition flex items-center justify-center gap-2"
           onClick={handleGoogleLogin}
         >
           <FcGoogle size={20} />

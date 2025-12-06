@@ -1,12 +1,16 @@
-import React from "react";
+"use client";
 
-const page = () => {
+import WithAuth from "@/components/WithAuth";
+import { useUserStore } from "@/store/useStore";
+
+function Dashboard() {
+  const name = useUserStore((s) => s.name);
+
   return (
-    <nav className="w-full border-b border-white py-6 px-8 flex justify-between">
-      <h1 className="text-white font-extrabold">Automate</h1>
-      <button className="bg-white px-2 py-1">Logout</button>
-    </nav>
+    <div className="h-screen text-white flex flex-col items-center justify-center">
+      <h1 className="text-3xl font-bold">Welcome, {name}</h1>
+    </div>
   );
-};
+}
 
-export default page;
+export default WithAuth(Dashboard);
