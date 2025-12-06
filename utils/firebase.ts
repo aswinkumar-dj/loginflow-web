@@ -8,18 +8,17 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase Jloginflow-aafe3.firebaseapp.comS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCtpRQsiy52FIgUHOzxTa7rCXSLqt3QvH0",
-  authDomain: "http://localhost:3000/",
-  projectId: "loginflow-aafe3",
-  storageBucket: "loginflow-aafe3.firebasestorage.app",
-  messagingSenderId: "498869793906",
-  appId: "1:498869793906:web:fd8386f47a02a06a677eeb",
-  measurementId: "G-E3YGK546CV",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MSG_SENDER,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 export const googleProvider = new GoogleAuthProvider();
 

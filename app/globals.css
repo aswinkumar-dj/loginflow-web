@@ -27,3 +27,13 @@ select:-webkit-autofill {
   caret-color: white !important;
   transition: background-color 9999s ease-in-out 0s;
 }
+
+input,
+select,
+textarea {
+  @apply w-full p-3 border-b border-white/20 text-white text-sm 
+         placeholder-gray-300/30 focus:border-amber-100 focus:outline-none transition;
+}
+.input-error {
+  @apply text-red-400 text-xs;
+}

@@ -2,20 +2,16 @@
 import { useState, useRef } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-  signInWithPopup,
-} from "firebase/auth";
-import { auth, googleProvider } from "@/utils/firebase";
-import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useStore";
+import { useRouter } from "next/navigation";
+import { registerUser, loginUser, googleLogin } from "@/services/authService";
+import { sendSignupWebhook } from "@/services/webhookService";
+import { parseAuthError } from "@/utils/errorFormatter";
 
 export default function AuthForm() {
   const [isSignup, setIsSignup] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -27,23 +23,9 @@ export default function AuthForm() {
   const confirmPassword = useRef<HTMLInputElement>(null);
 
   const setNameStore = useUserStore((s) => s.setName);
-
   const router = useRouter();
 
-  const formatFirebaseError = (error: string) => {
-    if (error.includes("auth/invalid-email")) return "Invalid email format";
-    if (error.includes("auth/missing-email")) return "Email is required";
-    if (error.includes("auth/weak-password"))
-      return "Password must be at least 6 characters";
-    if (error.includes("auth/email-already-in-use"))
-      return "Email already registered";
-    if (error.includes("auth/invalid-credential"))
-      return "Incorrect email or password";
-
-    return "Authentication failed";
-  };
-
-  const handleButtonClick = async () => {
+  const handleSubmit = async () => {
     setEmailError("");
     setPasswordError("");
 
@@ -55,63 +37,61 @@ export default function AuthForm() {
     if (!passwordValue) return setPasswordError("Password is required");
 
     if (isSignup && passwordValue !== confirmValue) {
-      return setPasswordError("Passwords do not match");
+      return setPasswordError("Password mismatch");
     }
 
     try {
       setLoading(true);
+      let user;
 
       if (isSignup) {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
+        user = await registerUser(
+          name.current?.value || "",
           emailValue,
           passwordValue
         );
 
-        if (name.current?.value) {
-          await updateProfile(userCredential.user, {
-            displayName: name.current.value,
-          });
-          setNameStore(name.current.value);
-        }
+        await sendSignupWebhook({
+          name: name.current?.value,
+          email: user.email,
+          uid: user.uid,
+          signedUpAt: new Date().toISOString(),
+        });
       } else {
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          emailValue,
-          passwordValue
-        );
-        setNameStore(userCredential.user.displayName || "User");
+        user = await loginUser(emailValue, passwordValue);
       }
 
+      setNameStore(user.displayName || "User");
       router.push("/dashboard");
     } catch (error: any) {
-      const readable = formatFirebaseError(error.message);
-
-      if (
-        error.message.includes("email") ||
-        error.message.includes("credential")
-      ) {
-        setEmailError(readable);
-      }
-
-      if (
-        error.message.includes("password") ||
-        error.message.includes("weak")
-      ) {
-        setPasswordError(readable);
-      }
+      const readable = parseAuthError(error.message);
+      error.message.includes("password")
+        ? setPasswordError(readable)
+        : setEmailError(readable);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleAuth = async () => {
     try {
-      const res = await signInWithPopup(auth, googleProvider);
-      setNameStore(res.user.displayName || "User");
+      setLoading(true);
+      const user = await googleLogin();
+
+      setNameStore(user.displayName || "User");
+
+      await sendSignupWebhook({
+        name: user.displayName,
+        email: user.email,
+        uid: user.uid,
+        provider: "google",
+      });
+
       router.push("/dashboard");
     } catch {
       alert("Google login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,38 +103,22 @@ export default function AuthForm() {
             {isSignup ? "Create Account" : "Login"}
           </h1>
 
-          {isSignup && (
-            <input
-              ref={name}
-              type="text"
-              placeholder="Full Name"
-              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
-            />
-          )}
+          {isSignup && <input ref={name} type="text" placeholder="Full Name" />}
 
-          <input
-            ref={email}
-            type="email"
-            placeholder="Email"
-            className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
-          />
-          {emailError && (
-            <p className="text-red-400 text-xs animate-fade">{emailError}</p>
-          )}
+          <input ref={email} type="email" placeholder="Email" />
+          {emailError && <p className="input-error">{emailError}</p>}
 
           <div className="relative">
             <input
               ref={password}
-              type={showPassword ? "text" : "password"}
+              type={showPwd ? "text" : "password"}
               placeholder="Password"
-              className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
             />
-
             <span
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPwd(!showPwd)}
               className="absolute right-3 top-3 text-white/20 cursor-pointer"
             >
-              {showPassword ? (
+              {showPwd ? (
                 <AiOutlineEye size={18} />
               ) : (
                 <AiOutlineEyeInvisible size={18} />
@@ -162,24 +126,20 @@ export default function AuthForm() {
             </span>
           </div>
 
-          {passwordError && (
-            <p className="text-red-400 text-xs animate-fade">{passwordError}</p>
-          )}
+          {passwordError && <p className="input-error">{passwordError}</p>}
 
           {isSignup && (
             <div className="relative">
               <input
                 ref={confirmPassword}
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPwd ? "text" : "password"}
                 placeholder="Confirm Password"
-                className="w-full p-3 border-b border-white/20 text-white text-sm placeholder-gray-300/30 focus:border-amber-100 transition"
               />
-
               <span
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                onClick={() => setShowConfirmPwd(!showConfirmPwd)}
                 className="absolute right-3 top-3 text-white/20 cursor-pointer"
               >
-                {showConfirmPassword ? (
+                {showConfirmPwd ? (
                   <AiOutlineEye size={18} />
                 ) : (
                   <AiOutlineEyeInvisible size={18} />
@@ -189,12 +149,11 @@ export default function AuthForm() {
           )}
 
           <button
-            type="submit"
             disabled={loading}
-            className={`w-full py-3 bg-white text-black font-medium rounded-md transition ${
+            className={`w-full py-3 bg-white text-black font-medium rounded-md ${
               loading ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"
             }`}
-            onClick={handleButtonClick}
+            onClick={handleSubmit}
           >
             {loading ? "Processing..." : isSignup ? "Sign Up" : "Login"}
           </button>
@@ -213,8 +172,9 @@ export default function AuthForm() {
         <div className="border-b border-white/10 my-10 mx-6" />
 
         <button
-          className="w-full py-3 text-white border border-white/20 font-medium rounded-md hover:bg-black/50 transition flex items-center justify-center gap-2"
-          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full py-3 text-white border border-white/20 rounded-md flex items-center justify-center gap-2"
+          onClick={handleGoogleAuth}
         >
           <FcGoogle size={20} />
           Continue with Google

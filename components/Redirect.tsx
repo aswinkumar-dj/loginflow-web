@@ -3,19 +3,15 @@ import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/utils/firebase";
 import { useRouter } from "next/navigation";
-import { useUserStore } from "@/store/useStore";
 
-export default function withAuth(Component: any) {
-  return function ProtectedPage(props: any) {
+export default function redirectIfLoggedIn(Component: any) {
+  return function PublicPage(props: any) {
     const router = useRouter();
-    const setName = useUserStore((s) => s.setName);
 
     useEffect(() => {
       const unsub = onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          router.replace("/");
-        } else {
-          setName(user.displayName || "User");
+        if (user) {
+          router.replace("/dashboard");
         }
       });
 
